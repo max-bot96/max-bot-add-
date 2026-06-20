@@ -1,0 +1,16 @@
+[Unit]
+Description=MAX BOT - Cloudflare Tunnel
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/maxbot
+ExecStart=/usr/local/bin/cloudflared tunnel --url http://127.0.0.1:5001
+Restart=always
+RestartSec=10
+StandardOutput=append:/opt/maxbot/logs/tunnel.log
+StandardError=append:/opt/maxbot/logs/tunnel.log
+
+[Install]
+WantedBy=multi-user.target
