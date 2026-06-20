@@ -1,0 +1,73 @@
+"""Watchdog - Auto-restart MAX BOT if it crashes
+Uses PID file to prevent duplicate processes."""
+import subprocess
+import time
+import os
+
+PYTHON = r"C:\Users\USER\AppData\Local\Python\pythoncore-3.14-64\python.exe"
+BASE = os.path.dirname(__file__)
+MAIN = os.path.join(BASE, "main.py")
+APP = os.path.join(BASE, "app.py")
+AGENT = os.path.join(BASE, "agent_bot.py")
+LOG = os.path.join(BASE, "watchdog.log")
+PID_FILE = os.path.join(BASE, "watchdog.pid")
+
+def log(msg):
+    ts = time.strftime("%Y-%m-%d %H:%M:%S")
+    line = f"[{ts}] {msg}"
+    with open(LOG, "a", encoding="utf-8") as f:
+        f.write(line + "\n")
+
+def get_python_count(script_name):
+    try:
+        result = subprocess.run(
+            ["powershell", "-Command",
+             f'(Get-WmiObject Win32_Process | Where-Object {{ $_.CommandLine -like "*{PYTHON}*" -and $_.CommandLine -like "*{script_name}*" }}).Count'],
+            capture_output=True, text=True, timeout=15
+        )
+        return int(result.stdout.strip())
+    except:
+        return 0
+
+def start_process(script):
+    return subprocess.Popen(
+        [PYTHON, "-u", script],
+        creationflags=subprocess.CREATE_NO_WINDOW,
+        cwd=BASE
+    )
+
+# Write our own PID
+with open(PID_FILE, "w") as f:
+    f.write(str(os.getpid()))
+
+log(f"Watchdog started (PID={os.getpid()})")
+
+while True:
+    try:
+        count = get_python_count("main.py")
+        if count == 0:
+            log("main.py is DOWN - restarting...")
+            start_process(MAIN)
+            log("main.py restarted")
+            time.sleep(15)
+        elif count > 1:
+            log(f"WARNING: {count} main.py instances running!")
+
+        count = get_python_count("app.py")
+        if count == 0:
+            log("app.py is DOWN - restarting...")
+            start_process(APP)
+            log("app.py restarted")
+            time.sleep(10)
+
+        count = get_python_count("agent_bot.py")
+        if count == 0:
+            log("agent_bot.py is DOWN - restarting...")
+            start_process(AGENT)
+            log("agent_bot.py restarted")
+            time.sleep(10)
+
+    except Exception as e:
+        log(f"Watchdog error: {e}")
+
+    time.sleep(30)

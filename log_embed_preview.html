@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>Log Embed Preview</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#313338;display:flex;justify-content:center;align-items:center;min-height:100vh;font-family:'Noto Sans Arabic',sans-serif;padding:40px;gap:40px;flex-wrap:wrap}
+
+.embed-wrapper{direction:ltr;display:flex;max-width:520px;width:100%}
+.embed-accent{width:4px;border-radius:8px 0 0 8px;flex-shrink:0}
+.embed-body{background:#2b2d31;padding:12px 16px;border-radius:0 8px 8px 0;flex:1}
+
+.embed-author{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.embed-author img{width:24px;height:24px;border-radius:50%}
+.embed-author-name{color:#f2f3f5;font-size:16px;font-weight:600}
+
+.embed-title{color:#f2f3f5;font-size:16px;font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+
+.embed-field{margin-bottom:8px}
+.embed-field-name{color:#b5bac1;font-size:16px;font-weight:600;margin-bottom:2px;text-transform:uppercase;letter-spacing:0.5px}
+.embed-field-value{color:#dbdee1;font-size:16px;line-height:1.5}
+
+.embed-field-inline{display:inline-block;width:48%;vertical-align:top}
+
+.embed-footer{display:flex;align-items:center;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid #3f4147}
+.embed-footer img{width:16px;height:16px;border-radius:50%}
+.embed-footer-text{color:#949ba4;font-size:16px}
+
+.embed-divider{color:#4e5058;font-size:16px;text-align:center;margin:8px 0;letter-spacing:2px}
+
+.tree-value{color:#dbdee1;font-size:16px;line-height:1.6;font-family:'Noto Sans Arabic',monospace}
+.tree-value .id{color:#949ba4;font-family:monospace;font-size:16px}
+.tree-value .mention{color:#c9cdfb;background:rgba(88,101,242,0.15);padding:0 4px;border-radius:3px;font-weight:500}
+.tree-value .link{color:#00a8fc;text-decoration:none}
+.tree-value .link:hover{text-decoration:underline}
+.tree-value .avatar-link{color:#00a8fc;font-size:16px}
+
+.page-title{color:#f2f3f5;font-size:22px;font-weight:700;text-align:center;margin-bottom:30px;width:100%;font-family:'Noto Sans Arabic',sans-serif}
+.page-subtitle{color:#949ba4;font-size:16px;text-align:center;margin-top:-20px;margin-bottom:30px;width:100%}
+
+.label-tag{display:inline-block;background:rgba(255,255,255,0.06);color:#949ba4;font-size:16px;padding:4px 10px;border-radius:12px;margin-bottom:16px;font-weight:500}
+</style>
+</head>
+<body>
+
+<div class="page-title">🎨 تصميم Log Embed الاحترافي — MAX BOT</div>
+<div class="page-subtitle">Mockup — كيف تبدو السجلات في ديسكورد</div>
+
+<!-- Embed 1: حظر عضو -->
+<div style="width:100%;text-align:center"><span class="label-tag">⚖️ حظر عضو — log-admin</span></div>
+<div class="embed-wrapper">
+    <div class="embed-accent" style="background:#000000"></div>
+    <div class="embed-body">
+        <div class="embed-title">⚖️  حظر عضو</div>
+        <div class="embed-field">
+            <div class="embed-field-name">👤 العضو</div>
+            <div class="tree-value">
+                <div>├─ المعرف: <span class="id">`123456789012345678`</span></div>
+                <div>├─ الاسم: <strong style="color:#f2f3f5">Ahmad</strong></div>
+                <div>├─ الرتب:</div>
+                <div>│ &nbsp;&nbsp;🟣 <span class="mention">@Admin</span></div>
+                <div>│ &nbsp;&nbsp;🔵 <span class="mention">@Moderator</span></div>
+                <div>│ &nbsp;&nbsp;🟢 <span class="mention">@Member</span></div>
+                <div>└─ الأفاتار: <span class="avatar-link">[صورة](https://cdn.discordapp.com)</span></div>
+            </div>
+        </div>
+        <div class="embed-field">
+            <div class="embed-field-name">👨‍⚖️ المنفذ</div>
+            <div class="tree-value">
+                <div>└── <span class="mention">@MaxBot</span> <span class="id">(`1379265753877975182`)</span></div>
+            </div>
+        </div>
+        <div class="embed-field">
+            <div class="embed-field-name">📋 التفاصيل</div>
+            <div class="tree-value">
+                <div>├─ السبب: مخالفة قواعد السيرفر</div>
+                <div>└─ الإجراء: حظر نهائي من السيرفر</div>
+            </div>
+        </div>
+        <div class="embed-divider">─────────────────────────────</div>
+        <div class="embed-footer">
+            <span class="embed-footer-text">🌐  MAX BOT  •  2026-06-11 00:15</span>
+        </div>
+    </div>
+</div>
+
+<!-- Embed 2: رسالة جديدة -->
+<div style="width:100%;text-align:center;margin-top:40px"><span class="label-tag">💬 رسالة جديدة — log-chat</span></div>
+<div class="embed-wrapper">
+    <div class="embed-accent" style="background:#2ECC71"></div>
+    <div class="embed-body">
+        <div class="embed-title">💬  رسالة جديدة</div>
+        <div class="embed-field">
+            <div class="embed-field-name">👤 العضو</div>
+            <div class="tree-value">
+                <div>├─ المعرف: <span class="id">`987654321012345678`</span></div>
+                <div>├─ الاسم: <strong style="color:#f2f3f5">Sara</strong></div>
+                <div>└─ الأفاتار: <span class="avatar-link">[صورة](https://cdn.discordapp.com)</span></div>
+            </div>
+        </div>
+        <div class="embed-field">
+            <div class="embed-field-name">📍 الروم</div>
+            <div class="tree-value">
+                <div>└── <span class="mention">#general</span></div>
+            </div>
+        </div>
+        <div class="embed-field">
+            <div class="embed-field-name">📝 الرسالة</div>
+            <div class="tree-value">
+                <div>مرحبا بالجميع 👋 كيف حالكم اليوم؟</div>
+            </div>
+        </div>
+        <div class="embed-field">
+            <div class="embed-field-name">📎 المرفقات</div>
+            <div class="tree-value">
+                <div>📎 <span class="link">[photo.jpg](https://cdn.discordapp.com/attachments/)</span></div>
+            </div>
+        </div>
+        <div class="embed-field">
+            <div class="embed-field-name">🔗 الروابط</div>
+            <div class="tree-value">
+                <div><span class="link">[قفز للرسالة](https://discord.com/channels/)</span></div>
+            </div>
+        </div>
+        <div class="embed-divider">─────────────────────────────</div>
+        <div class="embed-footer">
+            <span class="embed-footer-text">🌐  MAX BOT  •  2026-06-11 00:15</span>
+        </div>
+    </div>
+</div>
+
+<!-- Embed 3: طرد عضو -->
+<div style="width:100%;text-align:center;margin-top:40px"><span class="label-tag">👢 طرد عضو — log-admin</span></div>
+<div class="embed-wrapper">
+    <div class="embed-accent" style="background:#E67E22"></div>
+    <div class="embed-body">
+        <div class="embed-title">👢  طرد عضو</div>
+        <div class="embed-field">
+            <div class="embed-field-name">👤 العضو</div>
+            <div class="tree-value">
+                <div>├─ المعرف: <span class="id">`555666777888999000`</span></div>
+                <div>├─ الاسم: <strong style="color:#f2f3f5">TrollUser</strong></div>
+                <div>├─ الرتب:</div>
+                <div>│ &nbsp;&nbsp;🟢 <span class="mention">@Member</span></div>
+                <div>└─ الأفاتار: <span class="avatar-link">[صورة](https://cdn.discordapp.com)</span></div>
+            </div>
+        </div>
+        <div class="embed-field">
+            <div class="embed-field-name">👨‍⚖️ المنفذ</div>
+            <div class="tree-value">
+                <div>└── <span class="mention">@Admin</span> <span class="id">(`111222333444555666`)</span></div>
+            </div>
+        </div>
+        <div class="embed-field">
+            <div class="embed-field-name">📋 التفاصيل</div>
+            <div class="tree-value">
+                <div>├─ السبب: سبام وإزعاج الأعضاء</div>
+                <div>└─ الإجراء: طرد من السيرفر</div>
+            </div>
+        </div>
+        <div class="embed-divider">─────────────────────────────</div>
+        <div class="embed-footer">
+            <span class="embed-footer-text">🌐  MAX BOT  •  2026-06-11 00:15</span>
+        </div>
+    </div>
+</div>
+
+<!-- Embed 4: كتم عضو -->
+<div style="width:100%;text-align:center;margin-top:40px"><span class="label-tag">🔇 كتم عضو — log-admin</span></div>
+<div class="embed-wrapper">
+    <div class="embed-accent" style="background:#E67E22"></div>
+    <div class="embed-body">
+        <div class="embed-title">🔇  كتم عضو</div>
+        <div class="embed-field">
+            <div class="embed-field-name">👤 العضو</div>
+            <div class="tree-value">
+                <div>├─ المعرف: <span class="id">`777888999000111222`</span></div>
+                <div>├─ الاسم: <strong style="color:#f2f3f5">Spammer</strong></div>
+                <div>└─ الأفاتار: <span class="avatar-link">[صورة](https://cdn.discordapp.com)</span></div>
+            </div>
+        </div>
+        <div class="embed-field">
+            <div class="embed-field-name">👨‍⚖️ المنفذ</div>
+            <div class="tree-value">
+                <div>└── <span class="mention">@Moderator</span> <span class="id">(`333444555666777888`)</span></div>
+            </div>
+        </div>
+        <div class="embed-field">
+            <div class="embed-field-name">📋 التفاصيل</div>
+            <div class="tree-value">
+                <div>├─ السبب: سبام رسائل</div>
+                <div>└─ الإجراء: كتم لمدة 10m</div>
+            </div>
+        </div>
+        <div class="embed-divider">─────────────────────────────</div>
+        <div class="embed-footer">
+            <span class="embed-footer-text">🌐  MAX BOT  •  2026-06-11 00:15</span>
+        </div>
+    </div>
+</div>
+
+<!-- Embed 5: إعطاء رتبة -->
+<div style="width:100%;text-align:center;margin-top:40px"><span class="label-tag">➕ إعطاء رتبة — log-server</span></div>
+<div class="embed-wrapper">
+    <div class="embed-accent" style="background:#2ECC71"></div>
+    <div class="embed-body">
+        <div class="embed-title">➕  إعطاء رتبة</div>
+        <div class="embed-field">
+            <div class="embed-field-name">👤 العضو</div>
+            <div class="tree-value">
+                <div>├─ المعرف: <span class="id">`111222333444555666`</span></div>
+                <div>├─ الاسم: <strong style="color:#f2f3f5">NewMember</strong></div>
+                <div>└─ الأفاتار: <span class="avatar-link">[صورة](https://cdn.discordapp.com)</span></div>
+            </div>
+        </div>
+        <div class="embed-field">
+            <div class="embed-field-name">👨‍⚖️ المنفذ</div>
+            <div class="tree-value">
+                <div>└── <span class="mention">@Admin</span> <span class="id">(`999888777666555444`)</span></div>
+            </div>
+        </div>
+        <div class="embed-field">
+            <div class="embed-field-name">🎭 الرتب</div>
+            <div class="tree-value">
+                <div>├─ <span class="mention">@VIP</span> <span class="id">(`1234567890`)</span></div>
+                <div>└─ <span class="mention">@Member</span> <span class="id">(`0987654321`)</span></div>
+            </div>
+        </div>
+        <div class="embed-divider">─────────────────────────────</div>
+        <div class="embed-footer">
+            <span class="embed-footer-text">🌐  MAX BOT  •  2026-06-11 00:15</span>
+        </div>
+    </div>
+</div>
+
+<!-- Embed 6: انتقال صوتي -->
+<div style="width:100%;text-align:center;margin-top:40px"><span class="label-tag">🎤 تحديث صوتي — log-voice</span></div>
+<div class="embed-wrapper">
+    <div class="embed-accent" style="background:#7289DA"></div>
+    <div class="embed-body">
+        <div class="embed-title">🎤  تحديث صوتي</div>
+        <div class="embed-field">
+            <div class="embed-field-name">👤 العضو</div>
+            <div class="tree-value">
+                <div>├─ المعرف: <span class="id">`444555666777888999`</span></div>
+                <div>├─ الاسم: <strong style="color:#f2f3f5">Ahmad</strong></div>
+                <div>└─ الأفاتار: <span class="avatar-link">[صورة](https://cdn.discordapp.com)</span></div>
+            </div>
+        </div>
+        <div class="embed-field">
+            <div class="embed-field-name">🎤 تحديث الصوت</div>
+            <div class="tree-value">
+                <div>├─ الميك: 🔇 مكتوم ذاتياً</div>
+                <div>├─ السماعة: 🔊 فتح السماعة</div>
+                <div>└─ الانتقال: <span class="mention">#غرفة-أ</span> → <span class="mention">#غرفة-ب</span></div>
+            </div>
+        </div>
+        <div class="embed-divider">─────────────────────────────</div>
+        <div class="embed-footer">
+            <span class="embed-footer-text">🌐  MAX BOT  •  2026-06-11 00:15</span>
+        </div>
+    </div>
+</div>
+
+<div style="width:100%;text-align:center;margin-top:60px;padding:20px;background:rgba(255,255,255,0.03);border-radius:12px;border:1px solid rgba(255,255,255,0.06)">
+    <div style="color:#949ba4;font-size:16px;margin-bottom:12px">🎨 الألوان حسب نوع الحدث</div>
+    <div style="display:flex;justify-content:center;gap:16px;flex-wrap:wrap">
+        <span style="display:flex;align-items:center;gap:6px;color:#dbdee1;font-size:16px"><span style="width:14px;height:14px;border-radius:3px;background:#000;display:inline-block"></span> حظر/حماية</span>
+
+        <span style="display:flex;align-items:center;gap:6px;color:#dbdee1;font-size:16px"><span style="width:14px;height:14px;border-radius:3px;background:#E67E22;display:inline-block"></span> طرد/كتم</span>
+
+        <span style="display:flex;align-items:center;gap:6px;color:#dbdee1;font-size:16px"><span style="width:14px;height:14px;border-radius:3px;background:#2ECC71;display:inline-block"></span> إنشاء/دخول</span>
+
+        <span style="display:flex;align-items:center;gap:6px;color:#dbdee1;font-size:16px"><span style="width:14px;height:14px;border-radius:3px;background:#E74C3C;display:inline-block"></span> حذف</span>
+
+        <span style="display:flex;align-items:center;gap:6px;color:#dbdee1;font-size:16px"><span style="width:14px;height:14px;border-radius:3px;background:#3498DB;display:inline-block"></span> تعديل</span>
+
+        <span style="display:flex;align-items:center;gap:6px;color:#dbdee1;font-size:16px"><span style="width:14px;height:14px;border-radius:3px;background:#7289DA;display:inline-block"></span> صوتي</span>
+
+        <span style="display:flex;align-items:center;gap:6px;color:#dbdee1;font-size:16px"><span style="width:14px;height:14px;border-radius:3px;background:#5865F2;display:inline-block"></span> رتب</span>
+    </div>
+</div>
+
+</body>
+</html>

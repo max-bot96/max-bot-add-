@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: max-bot-dashboard
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --timeout 120
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: DISCORD_CLIENT_SECRET
+        sync: false
+      - key: HONEYPOT_SECRET
+        generateValue: true
+      - key: FLASK_SECRET_KEY
+        generateValue: true
+      - key: CAPTCHA_SECRET
+        generateValue: true

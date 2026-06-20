@@ -1,0 +1,6 @@
+@echo off
+echo Starting Z1 Pro pages server...
+start /B python -u "%~dp0serve_pages.py"
+echo Server started on http://localhost:8080
+echo Press any key to stop...
+pause
