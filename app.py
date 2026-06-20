@@ -371,7 +371,7 @@ def health():
 
 @app.route('/sitemap.xml')
 def sitemap():
-    base = get_base_url() or "https://max-bot-dashboard.onrender.com"
+    base = get_base_url() or "https://max-bot-add.onrender.com"
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url><loc>{base}/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
@@ -386,7 +386,7 @@ def sitemap():
 
 @app.route('/robots.txt')
 def robots():
-    base = get_base_url() or "https://max-bot-dashboard.onrender.com"
+    base = get_base_url() or "https://max-bot-add.onrender.com"
     txt = f"""User-agent: *
 Allow: /
 Disallow: /api/

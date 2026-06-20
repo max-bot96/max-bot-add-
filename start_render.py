@@ -2,9 +2,7 @@
 MAX BOT - Render.com Entry Point
 Runs Flask Dashboard ONLY (no Discord bot on Render)
 """
-import sys, io, os
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+import sys, os
 
 PORT = int(os.environ.get('PORT', 5000))
 
