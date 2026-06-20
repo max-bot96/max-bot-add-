@@ -11,3 +11,7 @@ if __name__ == "__main__":
     from app import app
     print(f"[RENDER] Dashboard on port {PORT}")
     app.run(host='0.0.0.0', port=PORT, debug=False, threaded=True)
+
+def create_app():
+    from app import app as flask_app
+    return flask_app
