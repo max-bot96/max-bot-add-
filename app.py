@@ -392,15 +392,7 @@ def sitemap():
 @app.route('/robots.txt')
 def robots():
     base = get_base_url() or "https://max-bot-add.onrender.com"
-    txt = f"""User-agent: *
-Allow: /
-
-Disallow: /api/
-Disallow: /dashboard
-Disallow: /callback
-Disallow: /logout
-
-Sitemap: {base}/sitemap.xml"""
+    txt = f"User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /dashboard\nDisallow: /callback\nDisallow: /logout\nSitemap: {base}/sitemap.xml"
     return txt, 200, {
         'Content-Type': 'text/plain',
         'Cache-Control': 'public, max-age=3600'
