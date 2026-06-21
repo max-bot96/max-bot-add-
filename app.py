@@ -363,7 +363,7 @@ def too_many(e):
 
 @app.route("/")
 def index():
-    return redirect(url_for("login"))
+    return render_template("landing.html")
 
 @app.route("/health")
 def health():
