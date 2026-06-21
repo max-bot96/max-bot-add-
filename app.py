@@ -294,14 +294,13 @@ def security_headers(response):
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
     response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer()'
-    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-    response.headers['Pragma'] = 'no-cache'
-    response.headers.pop('Server', None)
-    response.headers.pop('X-Powered-By', None)
     public_paths = ['/', '/login', '/commands', '/support', '/terms', '/privacy', '/contact', '/sitemap.xml', '/robots.txt']
     if path in public_paths:
         response.headers['X-Robots-Tag'] = 'index, follow'
+        response.headers['Cache-Control'] = 'public, max-age=300'
     else:
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
         response.headers['X-Frame-Options'] = 'DENY'
         response.headers['Content-Security-Policy'] = (
             "default-src 'self'; "
@@ -314,6 +313,8 @@ def security_headers(response):
             "base-uri 'self'; "
             "form-action 'self'"
         )
+    response.headers.pop('Server', None)
+    response.headers.pop('X-Powered-By', None)
     return response
 
 @app.before_request
@@ -393,12 +394,17 @@ def robots():
     base = get_base_url() or "https://max-bot-add.onrender.com"
     txt = f"""User-agent: *
 Allow: /
+
 Disallow: /api/
 Disallow: /dashboard
 Disallow: /callback
 Disallow: /logout
+
 Sitemap: {base}/sitemap.xml"""
-    return txt, 200, {'Content-Type': 'text/plain'}
+    return txt, 200, {
+        'Content-Type': 'text/plain',
+        'Cache-Control': 'public, max-age=3600'
+    }
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
