@@ -72,6 +72,32 @@ CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET", "")
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN", "")
 OAUTH_ENABLED = bool(CLIENT_SECRET)
 TUNNEL_URL_FILE = "server_url2.txt"
+VISITORS_FILE = "visitors.json"
+
+def load_visitors():
+    try:
+        with open(VISITORS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except:
+        return {"visitors": [], "total": 0}
+
+def save_visitors(data):
+    with open(VISITORS_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+def track_visitor(ip, username="", user_id="", page=""):
+    data = load_visitors()
+    visitor = {
+        "ip": ip,
+        "username": username,
+        "user_id": user_id,
+        "page": page,
+        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+    data["visitors"].insert(0, visitor)
+    data["visitors"] = data["visitors"][:100]
+    data["total"] = data.get("total", 0) + 1
+    save_visitors(data)
 
 IP_REGEX = re.compile(
     r'^(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}'
@@ -374,6 +400,11 @@ def index():
 def health():
     return jsonify({"status": "ok", "bot": "MAX BOT"})
 
+@app.route("/api/visitors")
+def api_visitors():
+    data = load_visitors()
+    return jsonify(data)
+
 @app.route('/sitemap.xml')
 def sitemap():
     base = get_base_url() or "https://web-production-f6fb8.up.railway.app"
@@ -401,6 +432,7 @@ def robots():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     ip = get_real_ip()
+    track_visitor(ip, page="login")
     if check_brute_force(ip):
         total_commands = len(COMMANDS)
         return render_template("login.html",
@@ -506,13 +538,60 @@ def callback():
             session["login_time"] = datetime.now().isoformat()
 
             login_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            ua = (request.headers.get("User-Agent", "") or "")[:100]
+            login_time_en = datetime.now().strftime("%I:%M %p")
+            ua = (request.headers.get("User-Agent", "") or "")[:200]
+            site_url = get_base_url() or request.host_url.rstrip("/")
+            
+            browser = "مجهول"
+            if "Chrome" in ua and "Edg" not in ua: browser = "Google Chrome"
+            elif "Edg" in ua: browser = "Microsoft Edge"
+            elif "Firefox" in ua: browser = "Mozilla Firefox"
+            elif "Safari" in ua and "Chrome" not in ua: browser = "Safari"
+            elif "Opera" in ua or "OPR" in ua: browser = "Opera"
+            
+            os_name = "مجهول"
+            if "Windows NT 10" in ua: os_name = "Windows 10/11"
+            elif "Windows NT 6.3" in ua: os_name = "Windows 8.1"
+            elif "Windows NT 6.1" in ua: os_name = "Windows 7"
+            elif "Linux" in ua and "Android" not in ua: os_name = "Linux"
+            elif "Mac OS X" in ua: os_name = "macOS"
+            elif "Android" in ua: os_name = "Android"
+            elif "iPhone" in ua or "iPad" in ua: os_name = "iOS"
+            
+            device = "مجهول"
+            if "Mobile" in ua or "Android" in ua: device = "📱 موبايل"
+            elif "Tablet" in ua or "iPad" in ua: device = "📱 تابلت"
+            else: device = "💻 كمبيوتر"
+            
             msg = (
-                f"🔐 **تسجيل دخول جديد إلى لوحة التحكم**\n"
-                f"🕐 {login_time}\n"
-                f"🌐 IP: [{ip}](https://whatismyipaddress.com/ip/{ip})\n"
-                f"📱 الجهاز: {html.escape(ua)}\n"
-                f"🔗 الرابط: {get_base_url() or 'مباشر'}"
+                f"```\n"
+                f"╔══════════════════════════════════════╗\n"
+                f"║     🔐 تنبيه أمني: تسجيل دخول       ║\n"
+                f"╚══════════════════════════════════════╝\n"
+                f"```\n\n"
+                f"**👤 حساب المستخدم**\n"
+                f"├─ الاسم: **{user_data.get('username', 'غير معروف')}**\n"
+                f"├─ المعرّف: `{user_id}`\n"
+                f"└─ الأفاتار: [عرض](https://cdn.discordapp.com/avatars/{user_id}/{user_data.get('avatar', '')}.png)\n\n"
+                f"**🕐 تفاصيل الجلسة**\n"
+                f"├─ التاريخ: `{login_time}`\n"
+                f"└─ الوقت: `{login_time_en}`\n\n"
+                f"**🌐 بيانات الشبكة**\n"
+                f"├─ عنوان IP: `{ip}`\n"
+                f"├─ الموقع: [Google Maps](https://www.google.com/maps?q={ip})\n"
+                f"└─ مزود الخدمة: [OVH Cloud](https://ipinfo.io/{ip})\n\n"
+                f"**📱 مواصفات الجهاز**\n"
+                f"├─ النوع: {device}\n"
+                f"├─ المتصفّح: {browser}\n"
+                f"└─ نظام التشغيل: {os_name}\n\n"
+                f"**🔗 رابط الموقع**\n"
+                f"└─ [{site_url}]({site_url})\n\n"
+                f"```\n"
+                f"╔══════════════════════════════════════╗\n"
+                f"║  ⚠️ إذا لم تكن أنت، غيّر كلمة      ║\n"
+                f"║  المرور فوراً واتصل بالدعم الفني   ║\n"
+                f"╚══════════════════════════════════════╝\n"
+                f"```"
             )
             send_discord_dm(OWNER_ID, msg)
 
