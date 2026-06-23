@@ -1133,10 +1133,13 @@ async def on_message(message):
                 log_embed.add_field(name="🕐 التوقيت", value=f"<t:{int(discord.utils.utcnow().timestamp())}:F>", inline=True)
                 log_embed.set_footer(text=f"🌐 {message.guild.name} • صيد الهاكرز 🔎", icon_url=message.guild.icon.url if message.guild.icon else None)
                 try:
+                    print(f"[BAIT] Attempting send_log(log_hacking) for {message.author}...", flush=True)
                     await send_log(message.guild.id, "log_hacking", log_embed)
-                    print(f"[BAIT] Log sent to log_hacker", flush=True)
+                    print(f"[BAIT] ✅ Log sent to log_hacker", flush=True)
                 except Exception as e:
                     print(f"[BAIT LOG ERROR] {e}", flush=True)
+
+                await asyncio.sleep(5)
 
                 try:
                     await message.guild.kick(message.author, reason=reason)
