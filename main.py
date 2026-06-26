@@ -40,6 +40,8 @@ HIGH_ROLE_ID = int(os.getenv("HIGH_ROLE_ID", "0"))
 UNLOCK_PROTECTION_ROLE_ID = 1508286557524857042
 TICKET_LOG_CHANNEL_ID = 1508798210368606208
 DATA_FILE = "bot_data.json"
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
+GITHUB_REPO = os.getenv("GITHUB_REPO", "")
 LINK_REGEX = re.compile(r'(https?://[^\s]+|discord\.gg/[^\s]+|discord\.com/invite/[^\s]+)')
 
 TICKET_ROLE_ACCESS = {}
@@ -69,6 +71,62 @@ def generate_honeypot_token(user_id, guild_id):
     import hashlib as _hl, hmac as _hm
     sig = _hm.new(SECRET_KEY.encode(), payload.encode(), _hl.sha256).hexdigest()[:32]
     return f"{sig}.{int(time.time())}"
+
+def load_from_github():
+    global _github_sha
+    if not GITHUB_TOKEN or not GITHUB_REPO:
+        return False
+    try:
+        import requests as _req
+        url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{DATA_FILE}"
+        headers = {"Authorization": f"Bearer {GITHUB_TOKEN}", "Accept": "application/vnd.github+json"}
+        resp = _req.get(url, headers=headers, timeout=15)
+        if resp.status_code == 200:
+            import base64
+            content = resp.json().get("content", "")
+            sha = resp.json().get("sha", "")
+            decoded = base64.b64decode(content).decode("utf-8")
+            data = json.loads(decoded)
+            with open(DATA_FILE, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False)
+            _github_sha = sha
+            print(f"[GITHUB] ✅ Loaded bot_data.json from GitHub ({len(decoded)} bytes)", flush=True)
+            return True
+        elif resp.status_code == 404:
+            print(f"[GITHUB] ⚠️ bot_data.json not found in repo — will create on first save", flush=True)
+            return False
+        else:
+            print(f"[GITHUB] ❌ Failed to load: {resp.status_code} {resp.text[:200]}", flush=True)
+            return False
+    except Exception as e:
+        print(f"[GITHUB] ❌ Load error: {e}", flush=True)
+        return False
+
+_github_sha = ""
+
+def save_to_github():
+    global _github_sha
+    if not GITHUB_TOKEN or not GITHUB_REPO:
+        return
+    try:
+        import requests as _req
+        import base64
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            content = f.read()
+        encoded = base64.b64encode(content.encode("utf-8")).decode("utf-8")
+        url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{DATA_FILE}"
+        headers = {"Authorization": f"Bearer {GITHUB_TOKEN}", "Accept": "application/vnd.github+json"}
+        payload = {"message": f"Auto-save bot_data.json ({datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')})", "content": encoded}
+        if _github_sha:
+            payload["sha"] = _github_sha
+        resp = _req.put(url, json=payload, headers=headers, timeout=15)
+        if resp.status_code in (200, 201):
+            _github_sha = resp.json().get("content", {}).get("sha", _github_sha)
+            print(f"[GITHUB] ✅ Saved bot_data.json to GitHub", flush=True)
+        else:
+            print(f"[GITHUB] ❌ Save failed: {resp.status_code} {resp.text[:200]}", flush=True)
+    except Exception as e:
+        print(f"[GITHUB] ❌ Save error: {e}", flush=True)
 
 SECRET_KEY = os.getenv("HONEYPOT_SECRET", "maxbot-honeypot-secret-key-2026-change-me")
 
@@ -328,6 +386,7 @@ def _do_save_data():
             "fingerprints": fingerprints,
             "used_tokens": used_tokens
         }, f, ensure_ascii=False)
+    save_to_github()
 
 def is_exempt(member):
     if member.id == YOUR_USER_ID:
@@ -416,6 +475,7 @@ async def on_ready():
     print(f'--- [ MAX BOT Online ] ---', flush=True)
     print(f'Connected as: {bot.user.name}', flush=True)
     print(f'Restart #{RESTART_COUNT}', flush=True)
+    load_from_github()
     load_data()
     print(f'[BAIT] hacker_bait_channels loaded: {hacker_bait_channels}', flush=True)
     print(f'[BAIT] YOUR_USER_ID = {YOUR_USER_ID}', flush=True)
@@ -424,11 +484,14 @@ async def on_ready():
     bot.add_view(CompetitionView())
     bot.add_view(PunishmentReviewView())
     bot.add_view(UsernameHunterView())
-    bot.add_view(HackerInvestigateView(
-        hacker_id=0, hacker_name="", message_content="", guild_id=0,
-        invite_link="", account_age=0, joined_ts=0, created_ts=0,
-        severity_label="", url_analyses=[], roles_text="", is_booster=False, is_bot_acc=False
-    ))
+    try:
+        bot.add_view(HackerInvestigateView(
+            hacker_id=0, hacker_name="", message_content="", guild_id=0,
+            invite_link="", account_age=0, joined_ts=0, created_ts=0,
+            severity_label="", url_analyses=[], roles_text="", is_booster=False, is_bot_acc=False
+        ))
+    except Exception as e:
+        print(f"[STARTUP] HackerInvestigateView add_view: {e}", flush=True)
     bot.loop.create_task(update_stats())
     bot.loop.create_task(check_dashboard_commands())
     bot.loop.create_task(daily_report())
@@ -552,6 +615,36 @@ async def _after_ready():
         except Exception as e:
             print(f"[HUNTER] Could not start task: {e}", flush=True)
 
+async def send_error_to_owner(error_name, error_msg, ctx_str="", guild_str="", user_str=""):
+    try:
+        owner = bot.get_user(YOUR_USER_ID)
+        if not owner:
+            owner = await bot.fetch_user(YOUR_USER_ID)
+        dm = await owner.create_dm()
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        embed = discord.Embed(
+            title="❌ خطأ في البوت!",
+            color=0xE74C3C,
+            timestamp=discord.utils.utcnow()
+        )
+        fields = [
+            ("📋 الخطأ", f"`{error_name}`", False),
+            ("💬 التفاصيل", f"```{str(error_msg)[:900]}```", False),
+        ]
+        if ctx_str:
+            fields.append(("📍 السياق", ctx_str, False))
+        if guild_str:
+            fields.append(("🌐 السيرفر", guild_str, False))
+        if user_str:
+            fields.append(("👤 المستخدم", user_str, False))
+        fields.append(("⏰ الوقت", now, False))
+        for name, value, inline in fields:
+            embed.add_field(name=name, value=value, inline=inline)
+        embed.set_footer(text="MAX BOT — Error Report")
+        await dm.send(embed=embed)
+    except Exception as e:
+        print(f"[ERROR DM] Failed to send error DM: {e}", flush=True)
+
 @bot.tree.error
 async def on_tree_error(interaction: discord.Interaction, error: discord.app_commands.AppCommandError):
     try:
@@ -561,8 +654,32 @@ async def on_tree_error(interaction: discord.Interaction, error: discord.app_com
             await interaction.followup.send(msg, ephemeral=True)
         else:
             await interaction.response.send_message(msg, ephemeral=True)
+        ctx_str = f"الأمر: /{interaction.command.name if interaction.command else 'غير معروف'}"
+        guild_str = f"{interaction.guild.name} ({interaction.guild.id})" if interaction.guild else "DM"
+        user_str = f"{interaction.user} ({interaction.user.id})"
+        await send_error_to_owner(type(error).__name__, error, ctx_str, guild_str, user_str)
     except Exception as e:
         print(f"TREE ERROR HANDLER FAILED: {e}")
+
+@bot.event
+async def on_error(event_name, *args, **kwargs):
+    import traceback as tb_mod
+    err = tb_mod.format_exc()
+    try:
+        ctx_str = f"Event: {event_name}"
+        guild_str = ""
+        user_str = ""
+        if args:
+            first = args[0]
+            if hasattr(first, 'guild'):
+                guild_str = f"{first.guild.name} ({first.guild.id})" if first.guild else "DM"
+            if hasattr(first, 'author'):
+                user_str = f"{first.author} ({first.author.id})"
+            elif hasattr(first, 'user'):
+                user_str = f"{first.user} ({first.user.id})"
+        await send_error_to_owner(f"Event: {event_name}", err, ctx_str, guild_str, user_str)
+    except Exception as e:
+        print(f"[ERROR DM] Failed in on_error: {e}", flush=True)
 
 @bot.event
 async def on_command_error(ctx, error):
@@ -715,6 +832,11 @@ async def on_command_error(ctx, error):
                 await ctx.interaction.response.send_message(msg, ephemeral=True)
         elif ctx.message:
             await ctx.send(msg)
+        cmd_name = ctx.command.name if ctx.command else "غير معروف"
+        ctx_str = f"الأمر: {ctx.prefix}{cmd_name}"
+        guild_str = f"{ctx.guild.name} ({ctx.guild.id})" if ctx.guild else "DM"
+        user_str = f"{ctx.author} ({ctx.author.id})"
+        await send_error_to_owner(type(error).__name__, error, ctx_str, guild_str, user_str)
     except Exception as e:
         print(f"ERROR HANDLER FAILED: {e}")
 
@@ -945,7 +1067,7 @@ class HackerInvestigateView(discord.ui.View):
         self.is_booster = is_booster
         self.is_bot_acc = is_bot_acc
 
-    @discord.ui.button(label="🔍 تحقق", style=discord.ButtonStyle.danger, emoji="🔍")
+    @discord.ui.button(label="🔍 تحقق", style=discord.ButtonStyle.danger, emoji="🔍", custom_id="bait_investigate")
     async def investigate(self, interaction, button):
         await interaction.response.defer()
         try:
@@ -1121,7 +1243,7 @@ class HackerInvestigateView(discord.ui.View):
         except Exception as e:
             await interaction.followup.send(f"❌ خطأ في التحليل: {e}", ephemeral=True)
 
-    @discord.ui.button(label="📩 دعوة", style=discord.ButtonStyle.success, emoji="📩")
+    @discord.ui.button(label="📩 دعوة", style=discord.ButtonStyle.success, emoji="📩", custom_id="bait_invite")
     async def invite_back(self, interaction, button):
         await interaction.response.defer()
         try:
@@ -1143,12 +1265,409 @@ class HackerInvestigateView(discord.ui.View):
         except Exception as e:
             await interaction.followup.send(f"❌ خطأ: {e}", ephemeral=True)
 
-    @discord.ui.button(label="🗑️ مسح", style=discord.ButtonStyle.secondary, emoji="🗑️")
+    @discord.ui.button(label="🗑️ مسح", style=discord.ButtonStyle.secondary, emoji="🗑️", custom_id="bait_clear")
     async def delete_msg(self, interaction, button):
         try:
             await interaction.message.delete()
         except Exception as e:
             await interaction.followup.send(f"❌ خطأ: {e}", ephemeral=True)
+
+    @discord.ui.button(label="👤 معلومات الشخص", style=discord.ButtonStyle.primary, emoji="👤", custom_id="bait_fullinfo")
+    async def full_info(self, interaction, button):
+        await interaction.response.defer()
+        try:
+            user = await bot.fetch_user(self.hacker_id)
+            guild = bot.get_guild(self.guild_id)
+            member = guild.get_member(self.hacker_id) if guild else None
+
+            embed = discord.Embed(
+                title=f"👤 معلومات كاملة — {user}",
+                color=0x3498DB,
+                timestamp=discord.utils.utcnow()
+            )
+            embed.set_thumbnail(url=user.display_avatar.url)
+
+            created_ts = int(user.created_at.timestamp())
+            embed.add_field(
+                name="📋 معلومات الحساب",
+                value=(
+                    f"├─ المعرف: `{user.id}`\n"
+                    f"├─ الاسم: `{user}`\n"
+                    f"├─ الاسم الأصلي: `{user.name}`\n"
+                    f"├─ تاريخ الإنشاء: <t:{created_ts}:F> (<t:{created_ts}:R>)\n"
+                    f"├─ عمر الحساب: **{self.account_age}** يوم\n"
+                    f"├─ بوت؟ {'نعم 🤖' if user.bot else 'لا'}\n"
+                    f"└─ بوست؟ {'نعم 💎' if member and member.premium_since else 'لا'}"
+                ),
+                inline=False
+            )
+
+            if member:
+                nickname = member.nick or "لا يوجد"
+                top_role = member.top_role.name if member.top_role != guild.default_role else "لا يوجد"
+                roles_list = [r.name for r in member.roles if r != guild.default_role]
+                roles_count = len(roles_list)
+                roles_text = " • ".join(roles_list[:20])
+                if roles_count > 20:
+                    roles_text += f" +{roles_count - 20} أخرى"
+
+                status_map = {
+                    discord.Status.online: "🟢 متصل",
+                    discord.Status.idle: "🌙 خامل",
+                    discord.Status.dnd: "🔴 لا تزعج",
+                    discord.Status.offline: "⚫ غير متصل",
+                }
+                status = status_map.get(member.status, "⚫ غير معروف")
+
+                devices = []
+                if member.mobile:
+                    devices.append("📱 جوال")
+                if member.desktop:
+                    devices.append("🖥️ كمبيوتر")
+                if member.web_client:
+                    devices.append("🌐 متصفح")
+                devices_str = " • ".join(devices) if devices else "غير معروف"
+
+                custom_status = "لا يوجد"
+                for act in member.activities:
+                    if act.type == discord.ActivityType.custom and act.state:
+                        custom_status = act.state
+                        break
+
+                permissions = [p[0] for p in member.guild_permissions if p[1]]
+                perms_str = " • ".join(permissions[:15])
+                if len(permissions) > 15:
+                    perms_str += f" +{len(permissions) - 15} أخرى"
+
+                badges = []
+                try:
+                    flags = user.public_flags
+                    if flags.verified_bot_developer:
+                        badges.append("🔧 مطور موثوق")
+                    if flags.discord_certified_moderator:
+                        badges.append("🛡️ مoderator موثوق")
+                    if flags.active_developer:
+                        badges.append("👨‍💻 مطور نشط")
+                    if flags.early_supporter:
+                        badges.append("⭐ داعم مبكر")
+                    if flags.staff:
+                        badges.append("👔 طاقم ديسكورد")
+                    if flags.partner:
+                        badges.append("🤝 شريك ديسكورد")
+                    if flags.hypesquad_events:
+                        badges.append("🎉 HypeSquad")
+                    if flags.bughunter_1:
+                        badges.append("🐛 صياد باغز")
+                    if flags.bughunter_2:
+                        badges.append("🐛 صياد باغز ذهبي")
+                    if flags.early_verified_bot_developer:
+                        badges.append("🔧 مطور بوت موثوق مبكر")
+                except:
+                    pass
+                if user.avatar and user.avatar.is_animated():
+                    badges.append("🎞️ أفاتار متحرك")
+                badges_str = " • ".join(badges) if badges else "لا يوجد"
+
+                if self.joined_ts:
+                    embed.add_field(
+                        name="🏰 معلومات السيرفر",
+                        value=(
+                            f"├─ الاسم بالسيرفر: **{nickname}**\n"
+                            f"├─ أعلى رتبة: **{top_role}**\n"
+                            f"├─ الرتب ({roles_count}): {roles_text}\n"
+                            f"├─ الحالة: {status}\n"
+                            f"├─ الأجهزة: {devices_str}\n"
+                            f"├─ الحالة الشخصية: {custom_status}\n"
+                            f"├─ انضم للسيرفر: <t:{self.joined_ts}:F> (<t:{self.joined_ts}:R>)\n"
+                            f"└─ بوستر؟ {'نعم 💎' if member.premium_since else 'لا'}"
+                        ),
+                        inline=False
+                    )
+
+                embed.add_field(name="🏅 الشارات", value=badges_str, inline=False)
+                embed.add_field(name="🔑 الصلاحيات", value=perms_str[:1024], inline=False)
+
+                if member.roles:
+                    roles_hierarchy = sorted(member.roles, key=lambda r: r.position, reverse=True)
+                    hierarchy_text = "\n".join([f"{'🔴' if r.hoist else '⚪'} {r.name} (pos {r.position})" for r in roles_hierarchy[:15]])
+                    embed.add_field(name="📊 ترتيب الرتب", value=hierarchy_text, inline=False)
+            else:
+                embed.add_field(name="⚠️ ملاحظة", value="العضو لم يعد في السيرفر (تم الطرد)", inline=False)
+                if self.roles_text:
+                    embed.add_field(name="🎭 الرتب السابقة", value=self.roles_text, inline=False)
+
+            if self.invite_link:
+                embed.add_field(name="🔗 رابط الدعوة", value=self.invite_link, inline=True)
+
+            embed.set_footer(text=f"🌐 MAX BOT — معلومات الهاكر")
+            await interaction.followup.send(embed=embed, ephemeral=True)
+        except Exception as e:
+            await interaction.followup.send(f"❌ خطأ في جلب المعلومات: {e}", ephemeral=True)
+
+    @discord.ui.button(label="📋 تأكد من اختبار", style=discord.ButtonStyle.success, emoji="📋", custom_id="bait_test_status")
+    async def test_status(self, interaction, button):
+        await interaction.response.defer()
+        try:
+            fp_key = f"{self.guild_id}_{self.hacker_id}"
+            data = {}
+            try:
+                if os.path.exists(DATA_FILE):
+                    with open(DATA_FILE, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+            except:
+                pass
+
+            fingerprints = data.get("fingerprints", {})
+            fp = fingerprints.get(fp_key, {})
+            hardware_bans = data.get("hardware_bans", [])
+            hacked_accounts = data.get("hacked_accounts", {})
+            prev = hacked_accounts.get(str(self.hacker_id), [])
+
+            embed = discord.Embed(
+                title="📋 تأكيد اختبار الهاكرز",
+                color=0x2ECC71 if fp else 0xE74C3C,
+                timestamp=discord.utils.utcnow()
+            )
+
+            if fp:
+                is_banned = fp.get("device_hash", "") in hardware_bans
+                collected_at = fp.get("collected_at", "غير معروف")[:19]
+                ip = fp.get("ip", "غير معروف")
+                gpu = fp.get("gpu_renderer", "غير معروف")[:50]
+                platform = fp.get("platform", "?")
+                screen = fp.get("screen", "?")
+                device_hash = fp.get("device_hash", "غير معروف")[:20]
+
+                score = 0
+                if is_banned:
+                    score += 10
+                if fp.get("no_js"):
+                    score += 8
+                if fp.get("webdriver"):
+                    score += 8
+                if fp.get("incognito"):
+                    score += 3
+                media_count = (fp.get("media_cam", 0) or 0) + (fp.get("media_mic", 0) or 0)
+                if media_count == 0:
+                    score += 4
+                if fp.get("touch_support") and fp.get("max_touch_points", 0) == 0:
+                    score += 2
+                if prev:
+                    score += min(len(prev) * 3, 9)
+
+                if score >= 19:
+                    verdict = "🔴 هاكر مؤكد"
+                elif score >= 9:
+                    verdict = "🟠 مشبوه جداً"
+                elif score >= 5:
+                    verdict = "🟡 مشبوه"
+                else:
+                    verdict = "🟢 نظيف"
+
+                embed.add_field(
+                    name="✅ اختبر — تم جمع البصمة",
+                    value=(
+                        f"├─ ⏰ **الوقت:** {collected_at}\n"
+                        f"├─ 🌐 **IP:** `{ip}`\n"
+                        f"├─ 📱 **النظام:** {platform}\n"
+                        f"├─ 🖥️ **الشاشة:** {screen}\n"
+                        f"├─ 🎮 **GPU:** {gpu}\n"
+                        f"├─ 🔑 **Device Hash:** `{device_hash}`\n"
+                        f"├─ 📷 **كاميرات:** {fp.get('media_cam', '?')} | 🎤 **ميكروفونات:** {fp.get('media_mic', '?')}\n"
+                        f"├─ 🔤 **خطوط:** {fp.get('fonts_count', '?')}\n"
+                        f"├─ 🚫 **Hardware Ban:** {'نعم 🔴' if is_banned else 'لا 🟢'}\n"
+                        f"└─ 📊 **التقييم:** {verdict} ({score}/30)"
+                    ),
+                    inline=False
+                )
+                if prev:
+                    embed.add_field(
+                        name=f"⚠️ سبق القبض ({len(prev)} مرة)",
+                        value="\n".join([f"• <t:{e['timestamp']}:R>" for e in prev[-3:]]),
+                        inline=False
+                    )
+                embed.set_footer(text="🌐 MAX BOT — تأكيد الاختبار ✅")
+            else:
+                embed.add_field(
+                    name="❌ لم يختبر بعد",
+                    value=(
+                        f"**الهاكر:** {self.hacker_name} (`{self.hacker_id}`)\n\n"
+                        f"├─ 🔗 تم إرسال رابط التحقق له\n"
+                        f"├─ ❌ لم يضغط على الرابط بعد\n"
+                        f"├─ 📊 عمر الحساب: **{self.account_age}** يوم\n"
+                        f"├─ 🔗 الروابط المشبوهة: {len(self.url_analyses)}\n"
+                        f"└─ 📊 التقييم: {self.severity_label}\n\n"
+                        f"**💡 نصيحة:** أرسل له الدعوة مرة ثانية قد يضغط على الرابط"
+                    ),
+                    inline=False
+                )
+                if self.invite_link:
+                    embed.add_field(name="🔗 رابط الدعوة", value=self.invite_link, inline=True)
+                embed.set_footer(text="🌐 MAX BOT — لم يختبر ❌")
+
+            user_obj = await bot.fetch_user(self.hacker_id)
+            embed.set_thumbnail(url=user_obj.display_avatar.url)
+            await interaction.followup.send(embed=embed, ephemeral=True)
+        except Exception as e:
+            await interaction.followup.send(f"❌ خطأ في التحقق من الاختبار: {e}", ephemeral=True)
+
+    @discord.ui.button(label="🔬 تحقق من الاختبار", style=discord.ButtonStyle.danger, emoji="🔬", custom_id="bait_honeypot")
+    async def honeypot_check(self, interaction, button):
+        await interaction.response.defer()
+        try:
+            fp_key = f"{self.guild_id}_{self.hacker_id}"
+            data = {}
+            try:
+                if os.path.exists(DATA_FILE):
+                    with open(DATA_FILE, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+            except:
+                pass
+
+            fingerprints = data.get("fingerprints", {})
+            fp = fingerprints.get(fp_key, {})
+            hardware_bans = data.get("hardware_bans", [])
+            hacked_accounts = data.get("hacked_accounts", {})
+            prev = hacked_accounts.get(str(self.hacker_id), [])
+
+            embed = discord.Embed(
+                title="🔬 تقرير اختبار الهاكرز — Honeypot",
+                color=0xE74C3C if fp else 0x95A5A6,
+                timestamp=discord.utils.utcnow()
+            )
+
+            if not fp:
+                embed.add_field(
+                    name="⚠️ لا توجد بيانات fingerprint",
+                    value=(
+                        f"**السبب:** الهاكر لم يضغط على رابط التحقق في صفحة الـ honeypot\n\n"
+                        f"**📊 معلومات الصيد:**\n"
+                        f"├─ التقييم: {self.severity_label}\n"
+                        f"├─ عمر الحساب: {self.account_age} يوم\n"
+                        f"├─ الروابط المشبوهة: {len(self.url_analyses)}\n"
+                        f"├─ الطرق المستخدمة: {', '.join(self.url_analyses[:3]) if self.url_analyses else 'غير معروف'}\n"
+                        f"└─ بوت؟ {'نعم' if self.is_bot_acc else 'لا'}"
+                    ),
+                    inline=False
+                )
+            else:
+                is_banned = fp.get("device_hash", "") in hardware_bans
+                ban_status = "🔴 **محظور (Hardware Ban)**" if is_banned else "🟢 غير محظور"
+
+                embed.add_field(
+                    name="📊 الحالة العامة",
+                    value=(
+                        f"├─ Hardware Ban: {ban_status}\n"
+                        f"├─ Device Hash: `{fp.get('device_hash', 'غير معروف')[:24]}`\n"
+                        f"├─ IP: `{fp.get('ip', 'غير معروف')}`\n"
+                        f"├─ تم الجمع: {fp.get('collected_at', 'غير معروف')[:19]}\n"
+                        f"└─ مكرر؟ **{len(prev)}** مرة سابقاً"
+                    ),
+                    inline=False
+                )
+
+                hw_text = (
+                    f"├─ 📱 النظام: {fp.get('platform', '?')}\n"
+                    f"├─ 🖥️ الشاشة: {fp.get('screen', '?')}\n"
+                    f"├─ 🎮 GPU: {fp.get('gpu_renderer', 'غير معروف')[:60]}\n"
+                    f"├─ 💾 RAM: {fp.get('ram_size', '?')} GB\n"
+                    f"├─ 🔧 CPU: {fp.get('cpu_cores', '?')} cores\n"
+                    f"├─ 🎵 Audio: {fp.get('audio_sample_rate', '?')} Hz\n"
+                    f"├─ 🔋 البطارية: {fp.get('battery_level', '?')}%\n"
+                    f"├─ 📷 الكاميرات: {fp.get('media_cam', '?')}\n"
+                    f"├─ 🎤 الميكروفونات: {fp.get('media_mic', '?')}\n"
+                    f"├─ 🔤 الخطوط: {fp.get('fonts_count', '?')} خط\n"
+                    f"├─ 🌐 WebGL: {fp.get('webgl_version', '?')}\n"
+                    f"├─ 🕐 JS Timing: {fp.get('js_timing', '?')} ms\n"
+                    f"├─ 🌐 WebRTC IP: {fp.get('webrtc_ip', 'غير متاح')}\n"
+                    f"├─ 🗣️ Speech Voices: {fp.get('speech_voices', '?')}\n"
+                    f"└─ 🐢 JS Engine: {fp.get('js_engine', '?')}"
+                )
+                embed.add_field(name="🖥️ معلومات الجهاز المتقدمة", value=hw_text, inline=False)
+
+                checks_text = ""
+                if fp.get("no_js"):
+                    checks_text += "🔴 لا يوجد JavaScript (headless browser)\n"
+                else:
+                    checks_text += "✅ JavaScript متاح\n"
+
+                if fp.get("webdriver"):
+                    checks_text += "🔴 navigator.webdriver = true (Selenium/Puppeteer)\n"
+                else:
+                    checks_text += "✅ navigator.webdriver = false\n"
+
+                if fp.get("incognito"):
+                    checks_text += "🔴 وضع Incognito مكتشف\n"
+                else:
+                    checks_text += "✅ وضع Incognito غير مكتشف\n"
+
+                if fp.get("languages", 0) == 0:
+                    checks_text += "🔴 لا توجد لغات مسجلة\n"
+                elif fp.get("languages", 0) > 5:
+                    checks_text += "⚠️ لغات كثيرة جداً (قد يكون proxy)\n"
+                else:
+                    checks_text += f"✅ {fp.get('languages', 0)} لغة\n"
+
+                touch = fp.get("touch_support", False)
+                max_touch = fp.get("max_touch_points", 0)
+                has_screen = fp.get("screen_width", 0) > 0
+                if touch and max_touch == 0:
+                    checks_text += "🔴 Touch مدعوم لكن 0 نقاط (مميزات وهمية)\n"
+                elif not touch and has_screen:
+                    checks_text += "✅ بدون Touch (normal desktop)\n"
+
+                if fp.get("battery_level", -1) == 0 and fp.get("charging") is False:
+                    checks_text += "⚠️ البطارية فاضية وغير مشحونة (قد يكون headless)\n"
+
+                media_count = (fp.get("media_cam", 0) or 0) + (fp.get("media_mic", 0) or 0)
+                if media_count == 0:
+                    checks_text += "🔴 لا توجد أجهزة media (headless)\n"
+
+                if checks_text:
+                    embed.add_field(name="🔬 نتائج الفحص التقني", value=checks_text[:1024], inline=False)
+
+                if prev:
+                    dates = [f"• <t:{e['timestamp']}:R>" for e in prev[-5:]]
+                    embed.add_field(
+                        name=f"⚠️ سجل القبض ({len(prev)} مرات)",
+                        value="\n".join(dates),
+                        inline=False
+                    )
+
+                score = 0
+                if is_banned:
+                    score += 10
+                if fp.get("no_js"):
+                    score += 8
+                if fp.get("webdriver"):
+                    score += 8
+                if fp.get("incognito"):
+                    score += 3
+                if media_count == 0:
+                    score += 4
+                if touch and max_touch == 0:
+                    score += 2
+                if prev:
+                    score += min(len(prev) * 3, 9)
+
+                if score >= 19:
+                    verdict = "🔴 هاكر مؤكد — تم الحظر تلقائياً"
+                elif score >= 9:
+                    verdict = "🟠 مشبوه جداً"
+                elif score >= 5:
+                    verdict = "🟡 مشبوه"
+                else:
+                    verdict = "🟢 نظيف"
+
+                embed.add_field(name="📊 التقييم النهائي", value=f"**النقاط: {score}/30**\n{verdict}", inline=False)
+
+                user_obj = await bot.fetch_user(self.hacker_id)
+                embed.set_thumbnail(url=user_obj.display_avatar.url)
+
+            embed.set_footer(text=f"🌐 MAX BOT — نظام الحماية السيبرانية")
+            await interaction.followup.send(embed=embed, ephemeral=True)
+        except Exception as e:
+            await interaction.followup.send(f"❌ خطأ في فحص الـ honeypot: {e}", ephemeral=True)
 
 @bot.event
 async def on_message(message):
@@ -1269,11 +1788,16 @@ async def on_message(message):
 
                 roles_text = "بدون"
                 roles_list = []
+                nickname = "لا يوجد"
+                top_role = "لا يوجد"
+                roles_count = 0
+                permissions = []
                 if member_obj:
                     roles_list = [r.name for r in member_obj.roles if r != message.guild.default_role]
                     nickname = member_obj.nick or "لا يوجد"
                     top_role = member_obj.top_role.name if member_obj.top_role != message.guild.default_role else "لا يوجد"
                     roles_count = len(roles_list)
+                    permissions = [p[0] for p in member_obj.guild_permissions if p[1]]
                 all_roles = ", ".join(roles_list) if roles_list else "لا يوجد"
                 perms_str = ", ".join(permissions[:10]) if permissions else "لا يوجد صلاحيات"
 
@@ -1478,11 +2002,43 @@ async def on_message(message):
                             mark_data_dirty()
                             print(f"[BAIT] ✅ Successfully kicked {message.author} ({message.author.id})", flush=True)
                         except discord.Forbidden:
-                            print(f"[BAIT] ❌ KICK Forbidden — unknown reason", flush=True)
+                            print(f"[BAIT] ❌ KICK Forbidden (discord.py) — trying HTTP API...", flush=True)
+                            try:
+                                import aiohttp
+                                async with aiohttp.ClientSession() as session:
+                                    headers = {"Authorization": f"Bot {DISCORD_TOKEN}", "Content-Type": "application/json"}
+                                    url = f"https://discord.com/api/v10/guilds/{guild_id}/members/{message.author.id}"
+                                    async with session.delete(url, headers=headers) as resp:
+                                        if resp.status == 204:
+                                            kick_success = True
+                                            hacker_bait_kicked.add(message.author.id)
+                                            mark_data_dirty()
+                                            print(f"[BAIT] ✅ HTTP API kick SUCCESS for {message.author}", flush=True)
+                                        else:
+                                            body = await resp.text()
+                                            print(f"[BAIT] ❌ HTTP API kick FAILED: {resp.status} {body}", flush=True)
+                            except Exception as e2:
+                                print(f"[BAIT] ❌ HTTP API kick ERROR: {e2}", flush=True)
                         except discord.NotFound:
                             print(f"[BAIT] ❌ KICK NotFound — member already left", flush=True)
                         except Exception as e:
                             print(f"[BAIT] ❌ KICK ERROR: {type(e).__name__}: {e}", flush=True)
+                            try:
+                                import aiohttp
+                                async with aiohttp.ClientSession() as session:
+                                    headers = {"Authorization": f"Bot {DISCORD_TOKEN}", "Content-Type": "application/json"}
+                                    url = f"https://discord.com/api/v10/guilds/{guild_id}/members/{message.author.id}"
+                                    async with session.delete(url, headers=headers) as resp:
+                                        if resp.status == 204:
+                                            kick_success = True
+                                            hacker_bait_kicked.add(message.author.id)
+                                            mark_data_dirty()
+                                            print(f"[BAIT] ✅ HTTP API kick SUCCESS for {message.author}", flush=True)
+                                        else:
+                                            body = await resp.text()
+                                            print(f"[BAIT] ❌ HTTP API kick FAILED: {resp.status} {body}", flush=True)
+                            except Exception as e3:
+                                print(f"[BAIT] ❌ HTTP API kick ERROR: {e3}", flush=True)
                 else:
                     print(f"[BAIT] ❌ Member not found in guild: {message.author.id}", flush=True)
 
@@ -1614,7 +2170,7 @@ async def on_message(message):
 
                 async def voice_alert_task():
                     try:
-                        for vs in message.guild.voice_clients:
+                        for vs in bot.voice_clients:
                             if vs.channel and vs.channel.members:
                                 owner_member = message.guild.get_member(YOUR_USER_ID)
                                 if owner_member and owner_member in vs.channel.members:
@@ -2007,6 +2563,8 @@ async def on_member_unban(guild, user):
 
 @bot.event
 async def on_member_remove(member):
+    if not hasattr(member, 'id') or not hasattr(member, 'roles'):
+        return
     roles = [r.mention for r in member.roles if not r.is_default()]
     roles_text = " | ".join(roles) if roles else "لا يوجد"
     if len(roles_text) > 1024:
@@ -4916,7 +5474,7 @@ async def hacker_bait(ctx, action: str = None, *, arg: str = None):
 
         if channel:
             hacker_bait_channels[guild_id] = channel.id
-            save_data()
+            save_data(force=True)
             embed = discord.Embed(
                 title="🪤 تم تفعيل قناة الفخ",
                 description=(
@@ -4947,7 +5505,7 @@ async def hacker_bait(ctx, action: str = None, *, arg: str = None):
                 overwrites=overwrites
             )
             hacker_bait_channels[guild_id] = channel.id
-            save_data()
+            save_data(force=True)
             embed = discord.Embed(
                 title="🪤 تم إنشاء قناة الفخ",
                 description=(
